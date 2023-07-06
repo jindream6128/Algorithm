@@ -1,28 +1,19 @@
-select
-    HISTORY_ID,    (DAILY_FEE * DURATION) * (1 - (COALESCE(DISCOUNT_RATE,0) * 0.01)) FEE
-from (
-    select
-        HISTORY_ID,
-        CAR_TYPE,
-        DAILY_FEE,
-        (END_DATE - START_DATE + 1) DURATION,
-        (
-            CONCAT((case
-                when (END_DATE - START_DATE + 1) >= 90 then 90
-                when (END_DATE - START_DATE + 1) >= 30 then 30
-                when (END_DATE - START_DATE + 1) >= 7 then 7
-                else 0
-            end),'일 이상')
-        ) DURATION_TYPE
-    from
-        CAR_RENTAL_COMPANY_RENTAL_HISTORY
-    left outer join
-        CAR_RENTAL_COMPANY_CAR
-    using(CAR_ID)
-    where
-        CAR_TYPE = '트럭') H
-left outer join
-    CAR_RENTAL_COMPANY_DISCOUNT_PLAN
-using(CAR_TYPE,DURATION_TYPE)
-order by
-    2 desc ,1 desc
+SELECT B.HISTORY_ID, CAR.DAILY_FEE, B.DISCOUNT
+FROM CAR_RENTAL_COMPANY_CAR CAR
+JOIN 
+(SELECT HISTORY_ID, HISTORY.CAR_ID CAR_ID,
+CASE 
+     WHEN (HISTORY.END_DATE - HISTORY.START_DATE) BETWEEN 0 AND 7 THEN 1
+     WHEN (HISTORY.END_DATE - HISTORY.START_DATE) BETWEEN 7 AND 30 THEN 0.95
+     WHEN (HISTORY.END_DATE - HISTORY.START_DATE) BETWEEN 30 AND 90 THEN 0.93
+     ELSE 0.9 END DISCOUNT
+FROM CAR_RENTAL_COMPANY_RENTAL_HISTORY HISTORY
+WHERE HISTORY.CAR_ID IN 
+(
+SELECT CAR_ID
+FROM CAR_RENTAL_COMPANY_CAR CAR
+WHERE CAR.CAR_TYPE ='트럭'
+)
+) B
+ON 
+CAR.CAR_ID = B.CAR_ID
